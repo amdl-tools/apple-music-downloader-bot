@@ -47,11 +47,18 @@ func DownloadStream(ctx context.Context, stream Stream, outputPath string) error
 		_ = os.Remove(tempPath)
 	}()
 
-	bar := progressbar.DefaultBytes(-1, "Downloading...")
+	total := len(stream.URLs)
+	var done int
 	err = download.DownloadSegments(ctx, download.Client, stream.URLs, tempFile, download.SegmentConfig{
 		Concurrency: streamDownloadConcurrency,
 		MaxRetries:  streamDownloadMaxRetries,
-		Progress:    func(n int) { _ = bar.Add(n) },
+		Progress: func(n int) {
+			done++
+			if total > 0 {
+				pct := done * 100 / total
+				fmt.Printf("\rDownloading... %d%%", pct)
+			}
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("download stream: %w", err)

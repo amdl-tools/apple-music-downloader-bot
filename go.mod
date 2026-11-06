@@ -55,4 +55,5 @@ require (
 	golang.org/x/sync v0.12.0
 	golang.org/x/term v0.30.0
 	gopkg.in/yaml.v2 v2.2.8
+	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 )

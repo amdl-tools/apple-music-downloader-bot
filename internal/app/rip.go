@@ -150,11 +150,13 @@ func (r *Runner) ripTrack(track *model.Track, token string, mediaUserToken strin
 			tArtistId = track.Resp.Relationships.Artists.Data[0].ID
 		}
 		r.State.AddedTracks = append(r.State.AddedTracks, AddedTrack{
-			Path:     trackPath,
-			Artist:   track.Resp.Attributes.ArtistName,
-			ArtistID: tArtistId,
-			Album:    track.Resp.Attributes.AlbumName,
-			Song:     track.Resp.Attributes.Name,
+			Path:      trackPath,
+			TrackID:   track.ID,
+			Artist:    track.Resp.Attributes.ArtistName,
+			ArtistID:  tArtistId,
+			Album:     track.Resp.Attributes.AlbumName,
+			Song:      track.Resp.Attributes.Name,
+			CoverPath: track.CoverPath,
 		})
 		return
 	}
@@ -170,11 +172,13 @@ func (r *Runner) ripTrack(track *model.Track, token string, mediaUserToken strin
 				tArtistId = track.Resp.Relationships.Artists.Data[0].ID
 			}
 			r.State.AddedTracks = append(r.State.AddedTracks, AddedTrack{
-				Path:     convertedPath,
-				Artist:   track.Resp.Attributes.ArtistName,
-				ArtistID: tArtistId,
-				Album:    track.Resp.Attributes.AlbumName,
-				Song:     track.Resp.Attributes.Name,
+				Path:      convertedPath,
+				TrackID:   track.ID,
+				Artist:    track.Resp.Attributes.ArtistName,
+				ArtistID:  tArtistId,
+				Album:     track.Resp.Attributes.AlbumName,
+				Song:      track.Resp.Attributes.Name,
+				CoverPath: track.CoverPath,
 			})
 			return
 		}
@@ -311,11 +315,13 @@ func (r *Runner) ripTrack(track *model.Track, token string, mediaUserToken strin
 		tArtistId = track.Resp.Relationships.Artists.Data[0].ID
 	}
 	r.State.AddedTracks = append(r.State.AddedTracks, AddedTrack{
-		Path:     track.SavePath,
-		Artist:   track.Resp.Attributes.ArtistName,
-		ArtistID: tArtistId,
-		Album:    track.Resp.Attributes.AlbumName,
-		Song:     track.Resp.Attributes.Name,
+		Path:      track.SavePath,
+		TrackID:   track.ID,
+		Artist:    track.Resp.Attributes.ArtistName,
+		ArtistID:  tArtistId,
+		Album:     track.Resp.Attributes.AlbumName,
+		Song:      track.Resp.Attributes.Name,
+		CoverPath: track.CoverPath,
 	})
 
 	r.State.Counter.Success++
@@ -422,11 +428,12 @@ func (r *Runner) ripStation(albumId string, token string, storefront string, med
 
 			fmt.Println("Radio already exists locally.")
 			r.State.AddedTracks = append(r.State.AddedTracks, AddedTrack{
-				Path:     trackPath,
-				Artist:   "Apple Music Station",
-				ArtistID: "",
-				Album:    station.Name,
-				Song:     station.Name,
+				Path:      trackPath,
+				Artist:    "Apple Music Station",
+				ArtistID:  "",
+				Album:     station.Name,
+				Song:      station.Name,
+				CoverPath: station.CoverPath,
 			})
 			r.saveM3UPlaylist(playlistFolderPath, playlistFolder, startIdx)
 			return nil
@@ -506,11 +513,12 @@ func (r *Runner) ripStation(albumId string, token string, storefront string, med
 			return err
 		}
 		r.State.AddedTracks = append(r.State.AddedTracks, AddedTrack{
-			Path:     trackPath,
-			Artist:   "Apple Music Station",
-			ArtistID: "",
-			Album:    station.Name,
-			Song:     station.Name,
+			Path:      trackPath,
+			Artist:    "Apple Music Station",
+			ArtistID:  "",
+			Album:     station.Name,
+			Song:      station.Name,
+			CoverPath: station.CoverPath,
 		})
 		r.State.Counter.Success++
 		r.State.OKDict[station.ID] = append(r.State.OKDict[station.ID], 1)

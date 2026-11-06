@@ -44,11 +44,13 @@ func NewRunner(cfg config.ConfigSet) *Runner {
 }
 
 type AddedTrack struct {
-	Path     string `json:"path"`
-	Artist   string `json:"artist"`
-	ArtistID string `json:"artist_id"`
-	Album    string `json:"album"`
-	Song     string `json:"song"`
+	Path      string `json:"path"`
+	TrackID   string `json:"track_id,omitempty"` // Apple Music track ID, used as cache key
+	Artist    string `json:"artist"`
+	ArtistID  string `json:"artist_id"`
+	Album     string `json:"album"`
+	Song      string `json:"song"`
+	CoverPath string `json:"cover_path,omitempty"`
 }
 
 // topLevelKeys returns the set of top-level YAML keys in data.

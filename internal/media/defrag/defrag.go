@@ -130,6 +130,12 @@ func defragmentMP4(input string, ftypOverride *mp4.FtypBox) error {
 		return fmt.Errorf("validate source ranges: %w", err)
 	}
 
+	// Apple's c608 caption samples pack many CEA-608 pairs into one sample;
+	// spread them one per video frame so captions appear in sync.
+	if err := spreadC608Samples(input, moov, tracks); err != nil {
+		return fmt.Errorf("retime closed captions: %w", err)
+	}
+
 	// Build progressive sample tables.
 	if err := buildProgressiveMoov(
 		moov,
@@ -204,6 +210,10 @@ type sourceRange struct {
 // Each fragmented trun becomes one progressive chunk.
 type outputChunk struct {
 	Source sourceRange
+
+	// Data, when set, holds synthesized chunk bytes (Source.Size is its
+	// length) instead of a range copied from the input.
+	Data []byte
 
 	SampleCount uint32
 	SampleDesc  uint32
@@ -1902,6 +1912,18 @@ func writeProgressiveMP4(
 				)
 			}
 			mdatRemaining -= chunk.Source.Size
+
+			if chunk.Data != nil {
+				if _, err := w.Write(chunk.Data); err != nil {
+					return fmt.Errorf(
+						"write track %d chunk %d: %w",
+						tr.TrackID,
+						chunkIndex,
+						err,
+					)
+				}
+				continue
+			}
 
 			if chunk.Source.Mdat == nil {
 				return fmt.Errorf(
