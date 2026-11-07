@@ -13,6 +13,11 @@
 !/.dockerignore
 !/docker-entrypoint.sh
 !/compose.yaml
+!/Dockerfile.bot
+!/docker-compose.bot.yml
+!/build-bot.sh
+!/config-bot.yaml.example
+!/README-BOT.md
 !/.env.example
 !/README.md
 !/README-CN.md

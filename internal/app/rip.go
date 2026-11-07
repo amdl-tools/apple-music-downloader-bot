@@ -149,7 +149,7 @@ func (r *Runner) ripTrack(track *model.Track, token string, mediaUserToken strin
 		if len(track.Resp.Relationships.Artists.Data) > 0 {
 			tArtistId = track.Resp.Relationships.Artists.Data[0].ID
 		}
-		r.State.AddedTracks = append(r.State.AddedTracks, AddedTrack{
+		r.addTrack(AddedTrack{
 			Path:      trackPath,
 			TrackID:   track.ID,
 			Artist:    track.Resp.Attributes.ArtistName,
@@ -171,7 +171,7 @@ func (r *Runner) ripTrack(track *model.Track, token string, mediaUserToken strin
 			if len(track.Resp.Relationships.Artists.Data) > 0 {
 				tArtistId = track.Resp.Relationships.Artists.Data[0].ID
 			}
-			r.State.AddedTracks = append(r.State.AddedTracks, AddedTrack{
+			r.addTrack(AddedTrack{
 				Path:      convertedPath,
 				TrackID:   track.ID,
 				Artist:    track.Resp.Attributes.ArtistName,
@@ -314,7 +314,7 @@ func (r *Runner) ripTrack(track *model.Track, token string, mediaUserToken strin
 	if len(track.Resp.Relationships.Artists.Data) > 0 {
 		tArtistId = track.Resp.Relationships.Artists.Data[0].ID
 	}
-	r.State.AddedTracks = append(r.State.AddedTracks, AddedTrack{
+	r.addTrack(AddedTrack{
 		Path:      track.SavePath,
 		TrackID:   track.ID,
 		Artist:    track.Resp.Attributes.ArtistName,
@@ -427,7 +427,7 @@ func (r *Runner) ripStation(albumId string, token string, storefront string, med
 			r.State.OKDict[station.ID] = append(r.State.OKDict[station.ID], 1)
 
 			fmt.Println("Radio already exists locally.")
-			r.State.AddedTracks = append(r.State.AddedTracks, AddedTrack{
+			r.addTrack(AddedTrack{
 				Path:      trackPath,
 				Artist:    "Apple Music Station",
 				ArtistID:  "",
@@ -512,7 +512,7 @@ func (r *Runner) ripStation(albumId string, token string, storefront string, med
 			r.State.Counter.Error++
 			return err
 		}
-		r.State.AddedTracks = append(r.State.AddedTracks, AddedTrack{
+		r.addTrack(AddedTrack{
 			Path:      trackPath,
 			Artist:    "Apple Music Station",
 			ArtistID:  "",

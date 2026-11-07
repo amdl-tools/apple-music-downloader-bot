@@ -105,7 +105,7 @@ func (r *Runner) recordAddedMV(path string, mvInfo *ampapi.MusicVideoResp) {
 	if len(data.Relationships.Artists.Data) > 0 {
 		artistID = data.Relationships.Artists.Data[0].ID
 	}
-	r.State.AddedTracks = append(r.State.AddedTracks, AddedTrack{
+	r.addTrack(AddedTrack{
 		Path:     path,
 		Artist:   data.Attributes.ArtistName,
 		ArtistID: artistID,

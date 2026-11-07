@@ -31,6 +31,11 @@ type State struct {
 	Counter     Counter
 	OKDict      map[string][]int
 	AddedTracks []AddedTrack
+
+	// OnTrackReady, when set, is called right after a track is recorded in
+	// AddedTracks, so a caller (the Telegram bot) can deliver it immediately
+	// instead of waiting for the whole album or playlist.
+	OnTrackReady func(AddedTrack)
 }
 
 type Runner struct {
@@ -41,6 +46,15 @@ type Runner struct {
 
 func NewRunner(cfg config.ConfigSet) *Runner {
 	return &Runner{Config: cfg, State: State{OKDict: make(map[string][]int)}}
+}
+
+// addTrack records a finished (or already present) track and notifies
+// State.OnTrackReady.
+func (r *Runner) addTrack(t AddedTrack) {
+	r.State.AddedTracks = append(r.State.AddedTracks, t)
+	if r.State.OnTrackReady != nil {
+		r.State.OnTrackReady(t)
+	}
 }
 
 type AddedTrack struct {
