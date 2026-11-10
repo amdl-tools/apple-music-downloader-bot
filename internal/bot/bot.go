@@ -209,9 +209,13 @@ func (b *Bot) dispatch(update tgbotapi.Update) {
 		return
 	}
 
-	// Plain text that looks like an Apple Music link
-	if DetectURLType(msg.Text) != "" {
-		b.enqueueURL(msg, msg.Text, ModeALAC)
+	// Plain text that looks like an Apple Music link, optionally followed by -f
+	text, force := splitForceFlag(msg.Text)
+	if !force {
+		text = msg.Text // unchanged when there is no flag
+	}
+	if DetectURLType(text) != "" {
+		b.enqueueURL(msg, text, ModeALAC, force)
 		return
 	}
 

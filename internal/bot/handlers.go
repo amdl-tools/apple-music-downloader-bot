@@ -28,6 +28,9 @@ const helpText = `Available commands:
 /stats         - Show statistics (admin only)
 /resetquota <user id> - Reset a user's daily limit (admin only)
 
+Add -f (or --force) to any download, for example /dl -f <url>, to skip the
+file cache and download and upload the tracks again.
+
 You can also paste an Apple Music link directly to download it as ALAC.
 
 Supported link types: album, song, playlist, station, music-video`
@@ -44,30 +47,51 @@ func (b *Bot) cmdHelp(msg *tgbotapi.Message) {
 	b.reply(msg, helpText)
 }
 
+// splitForceFlag removes the force flag (-f, --force or force, in any case and
+// at any position) from a command's arguments and reports whether it was there.
+func splitForceFlag(args string) (rest string, force bool) {
+	var kept []string
+	for _, field := range strings.Fields(args) {
+		switch strings.ToLower(field) {
+		case "-f", "--force", "force":
+			force = true
+		default:
+			kept = append(kept, field)
+		}
+	}
+	return strings.Join(kept, " "), force
+}
+
 // cmdDownload handles /dl, /atmos, /aac, /mv commands.
-// The URL is expected as the command argument.
+// The URL is expected as the command argument, optionally with a force flag.
 func (b *Bot) cmdDownload(msg *tgbotapi.Message, mode Mode) {
-	rawURL := strings.TrimSpace(msg.CommandArguments())
+	rawURL, force := splitForceFlag(msg.CommandArguments())
 	if rawURL == "" {
-		b.reply(msg, fmt.Sprintf("Usage: /%s <apple music url>", msg.Command()))
+		b.reply(msg, fmt.Sprintf("Usage: /%s [-f] <apple music url>", msg.Command()))
 		return
 	}
 	if DetectURLType(rawURL) == "" {
 		b.reply(msg, "That does not look like a valid Apple Music link.")
 		return
 	}
-	b.enqueueURL(msg, rawURL, mode)
+	b.enqueueURL(msg, rawURL, mode, force)
 }
 
 // enqueueURL creates a job, sends an acknowledgment message (so we have a
 // message ID to edit with progress), and adds the job to the queue.
-func (b *Bot) enqueueURL(msg *tgbotapi.Message, rawURL string, mode Mode) {
-	ackMsg, err := b.send(msg.Chat.ID, fmt.Sprintf("Queued [%s]: %s", mode, rawURL))
+// force makes the job ignore the file_id cache.
+func (b *Bot) enqueueURL(msg *tgbotapi.Message, rawURL string, mode Mode, force bool) {
+	note := ""
+	if force {
+		note = " (force, cache skipped)"
+	}
+	ackMsg, err := b.send(msg.Chat.ID, fmt.Sprintf("Queued [%s]%s: %s", mode, note, rawURL))
 	if err != nil {
 		return
 	}
 
 	job := newJob(msg.From.ID, msg.Chat.ID, ackMsg.MessageID, rawURL, mode, msg.From.UserName)
+	job.Force = force
 	if err := b.queue.Enqueue(job); err != nil {
 		b.edit(msg.Chat.ID, ackMsg.MessageID, "Error: "+err.Error())
 	}
@@ -361,6 +385,7 @@ func (b *Bot) cmdCancel(msg *tgbotapi.Message) {
 //
 // Order of work:
 //  1. look the link up in the file_id cache and send every cached track
+//     (a force job lists the tracks but never reads the cache)
 //  2. download only what is still missing
 //  3. upload the downloaded tracks (and cache their file_ids)
 func (b *Bot) processJob(job *Job) {
@@ -383,7 +408,11 @@ func (b *Bot) processJob(job *Job) {
 	// Telegram; with send-as-document disabled the user wants the files on disk.
 	var plan cachePlan
 	if b.cfg.SendAsDocument {
-		b.edit(job.ChatID, job.MessageID, fmt.Sprintf("Checking cache [%s]...", job.Mode))
+		if job.Force {
+			b.edit(job.ChatID, job.MessageID, fmt.Sprintf("Force download [%s]: skipping cache...", job.Mode))
+		} else {
+			b.edit(job.ChatID, job.MessageID, fmt.Sprintf("Checking cache [%s]...", job.Mode))
+		}
 		plan = b.serveFromCache(job, func(text string) {
 			b.edit(job.ChatID, job.MessageID, text)
 		})
@@ -585,7 +614,7 @@ func (b *Bot) sendTracks(job *Job, tracks []app.AddedTrack, up *UploadProgress) 
 	var planFiles int
 	var planBytes int64
 	for i, t := range tracks {
-		if size, ok := b.uploadSize(t, job.Mode, limitBytes); ok {
+		if size, ok := b.uploadSize(t, job.Mode, limitBytes, job.Force); ok {
 			planned[i] = true
 			planFiles++
 			planBytes += size
@@ -612,7 +641,7 @@ func (b *Bot) sendTracks(job *Job, tracks []app.AddedTrack, up *UploadProgress) 
 		// A track can be cached here when the lookup before the download could
 		// not plan the link (for example a station) or failed. The file was
 		// already downloaded, so it is still cleaned up like any uploaded file.
-		if entry, ok := b.fileIDCache.Get(track.TrackID, job.Mode); ok {
+		if entry, ok := b.cachedFileID(job, track.TrackID); ok {
 			sendErr := b.sendCached(job.ChatID, entry)
 			if sendErr == nil {
 				b.cleaner.OnUploaded(track.Path)
@@ -679,14 +708,26 @@ func (b *Bot) sendTracks(job *Job, tracks []app.AddedTrack, up *UploadProgress) 
 	}
 }
 
+// cachedFileID looks a track up in the file_id cache. A force job never uses
+// the cache.
+func (b *Bot) cachedFileID(job *Job, trackID string) (FileIDEntry, bool) {
+	if job.Force {
+		return FileIDEntry{}, false
+	}
+	return b.fileIDCache.Get(trackID, job.Mode)
+}
+
 // uploadSize reports whether track will be uploaded to Telegram, which is when it
-// is not in the file_id cache, exists, and is within the size limit, and its size.
-func (b *Bot) uploadSize(track app.AddedTrack, mode Mode, limitBytes int64) (int64, bool) {
+// is not in the file_id cache (or force ignores the cache), exists, and is within
+// the size limit, and its size.
+func (b *Bot) uploadSize(track app.AddedTrack, mode Mode, limitBytes int64, force bool) (int64, bool) {
 	if track.Path == "" {
 		return 0, false
 	}
-	if _, cached := b.fileIDCache.Get(track.TrackID, mode); cached {
-		return 0, false
+	if !force {
+		if _, cached := b.fileIDCache.Get(track.TrackID, mode); cached {
+			return 0, false
+		}
 	}
 	info, err := os.Stat(track.Path)
 	if err != nil || info.Size() > limitBytes {

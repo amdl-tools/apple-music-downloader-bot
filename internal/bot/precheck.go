@@ -131,6 +131,9 @@ func joinTitle(artist, name string) string {
 // serveFromCache sends every cached track of the job's link to the user and
 // reports what is left to download. It never downloads anything itself, and any
 // failure simply leaves the track to the normal download path.
+//
+// A force job still lists the link's tracks, so the quota and the progress
+// message know its size, but it never reads the cache and delivers nothing.
 func (b *Bot) serveFromCache(job *Job, status func(string)) cachePlan {
 	var plan cachePlan
 
@@ -149,6 +152,10 @@ func (b *Bot) serveFromCache(job *Job, status func(string)) cachePlan {
 			}
 			plan.Titles[t.Index] = t.Name
 		}
+	}
+
+	if job.Force {
+		return plan
 	}
 
 	// Cheap pass: leave quietly when nothing is cached.

@@ -37,6 +37,7 @@ type Job struct {
 	MessageID int    // Telegram message to edit with progress updates
 	URL       string
 	Mode      Mode
+	Force     bool // skip the file_id cache: download and upload again
 	Status    JobStatus
 	CreatedAt time.Time
 	username  string // Telegram username, used for stats

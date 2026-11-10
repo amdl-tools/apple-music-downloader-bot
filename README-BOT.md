@@ -54,6 +54,24 @@ chmod +x build-bot.sh
 | `/status` | Show your active downloads |
 | `/cancel` | Cancel your active downloads |
 | paste a link | Auto-downloads as ALAC |
+| `-f` / `--force` after any of the above | Force download: ignore the file_id cache (see below) |
+
+### Force download
+
+By default the bot first looks each track up in the `file_id` cache and, on a
+hit, re-sends the copy Telegram already holds without downloading anything.
+Add `-f` (or `--force`, or the word `force`) to skip that cache:
+
+```
+/dl -f https://music.apple.com/us/album/...
+/mv --force https://music.apple.com/us/music-video/...
+https://music.apple.com/us/song/... -f        (pasted link)
+```
+
+A forced job downloads every track again and uploads it as a new file. The
+fresh `file_id` replaces the old cache entry, so a stale or broken cached copy
+is repaired for later requests. Forced downloads count against the daily quota
+like any other download.
 
 ## Configuration reference
 
